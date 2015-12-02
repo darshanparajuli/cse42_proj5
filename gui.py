@@ -25,8 +25,8 @@ class GameWindow:
 
     def __init__(self) -> None:
         self._othello_board_options = othello.OthelloBoardOptions()
-        self._othello_board_options.set_row_count(4)
-        self._othello_board_options.set_col_count(4)
+        self._othello_board_options.set_row_count(8)
+        self._othello_board_options.set_col_count(8)
         self._othello_board = othello.OthelloBoard(self._othello_board_options)
         self._current_player = self._othello_board_options.get_first_turn()
         self._root_window = tk.Tk()

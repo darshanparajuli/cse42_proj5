@@ -51,7 +51,7 @@ class OthelloBoardOptions:
         self._first_turn = BLACK_PIECE
         self._top_left_piece = WHITE_PIECE
         self._high_count_wins = True
-        self._play_against_ai = True
+        self._play_against_ai = False
 
     def get_row_count(self) -> int:
         return self._row_count
@@ -275,7 +275,11 @@ class OthelloBoard:
     def get_ai_move(self, piece_type: 'piece type') -> '(row, col)':
         possible_valid_moves = self._get_all_possible_valid_moves(piece_type)
         keys = list(possible_valid_moves.keys())
-        keys.sort(key = lambda k: len(possible_valid_moves[k][1]), reverse = True)
+        if self._board_options.high_count_wins():
+            keys.sort(key = lambda k: len(possible_valid_moves[k][1]), reverse = True)
+        else:
+            keys.sort(key = lambda k: len(possible_valid_moves[k][1]))
+
         keys_highest_captures = []
         highest_captures = len(possible_valid_moves[keys[0]][1])
         for k in keys:

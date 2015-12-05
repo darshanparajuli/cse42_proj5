@@ -20,6 +20,7 @@ class SetupWindow:
 
     _OPTION_WIN_CONDITIONS = {'Lowest piece count': False, 'Highest piece count': True}
     _OPTION_BLACK_WHITE = {'Black': othello.BLACK_PIECE, 'White': othello.WHITE_PIECE}
+    _OPTION_PLAY_AGAINST = {'Human': False, 'Computer': True}
 
     def __init__(self, as_dialog = True, options = othello.OthelloBoardOptions()) -> None:
         self._as_dialog = as_dialog
@@ -40,7 +41,7 @@ class SetupWindow:
         om_row_count.config(font = om_font)
         om_row_count.grid(row = 0, column = 1, sticky = tk.W)
 
-        tk.Label(self._dialog_window, text = 'X', font = label_font).grid(row = 0, column = 2, sticky = tk.W)
+        tk.Label(self._dialog_window, text = 'X', font = label_font).grid(row = 0, column = 2, sticky = tk.W + tk.E)
 
         self._col_count_var = tk.StringVar()
         om_col_count = tk.OptionMenu(self._dialog_window, self._col_count_var, *[str(x) for x in range(4, 17, 2)])
@@ -70,14 +71,24 @@ class SetupWindow:
 
         self._win_condition_var = tk.StringVar()
         keys = list(SetupWindow._OPTION_WIN_CONDITIONS.keys())
-        keys.sort(reverse = True)
+        keys.sort()
         om_win_condition = tk.OptionMenu(self._dialog_window, self._win_condition_var, *keys)
         om_win_condition.config(font = om_font)
         om_win_condition.grid(row = 3, column = 1, columnspan = 3, sticky = tk.W)
 
-        tk.Button(self._dialog_window, text = 'OK', command = self._on_ok_clicked).grid(row = 4, column = 2)
+        tk.Label(self._dialog_window, text = 'Play against:', font = label_font).grid(
+                row = 4, column = 0, sticky = tk.E)
+
+        self._play_against_var = tk.StringVar()
+        keys = list(SetupWindow._OPTION_PLAY_AGAINST.keys())
+        keys.sort()
+        om_play_against = tk.OptionMenu(self._dialog_window, self._play_against_var, *keys)
+        om_play_against.config(font = om_font)
+        om_play_against.grid(row = 4, column = 1, columnspan = 3, sticky = tk.W)
+
+        tk.Button(self._dialog_window, text = 'OK', command = self._on_ok_clicked).grid(row = 5, column = 2)
         tk.Button(self._dialog_window, text = 'Cancel', command = self._on_cancel_clicked).grid(
-                row = 4, column = 3, padx = 10, pady = 10)
+                row = 5, column = 3, padx = 10, pady = 10)
 
         self._init_defaults()
         self._init_callbacks()
@@ -88,6 +99,7 @@ class SetupWindow:
         self._first_turn_var.trace('w', self._on_first_turn_changed)
         self._top_left_var.trace('w', self._on_top_left_changed)
         self._win_condition_var.trace('w', self._on_win_condition_changed)
+        self._play_against_var.trace('w', self._on_play_against_changed)
 
     def _init_defaults(self) -> None:
         self._row_count_var.set(str(self._options.get_row_count()))
@@ -95,8 +107,11 @@ class SetupWindow:
         self._first_turn_var.set(_piece_to_str(self._options.get_first_turn()))
         self._top_left_var.set(_piece_to_str(self._options.get_top_left_piece()))
         keys = list(SetupWindow._OPTION_WIN_CONDITIONS.keys())
-        keys.sort(reverse = True)
-        self._win_condition_var.set(keys[1 if self._options.high_count_wins() else 0])
+        keys.sort()
+        self._win_condition_var.set(keys[0 if self._options.high_count_wins() else 1])
+        keys = list(SetupWindow._OPTION_PLAY_AGAINST.keys())
+        keys.sort()
+        self._play_against_var.set(keys[0 if self._options.play_against_ai() else 1])
 
     def _on_row_count_changed(self, *args) -> None:
         self._options.set_row_count(int(self._row_count_var.get()))
@@ -115,6 +130,10 @@ class SetupWindow:
     def _on_win_condition_changed(self, *args) -> None:
         win_condition = self._win_condition_var.get()
         self._options.set_high_count_wins(SetupWindow._OPTION_WIN_CONDITIONS[win_condition])
+
+    def _on_play_against_changed(self, *args) -> None:
+        play_against = self._play_against_var.get()
+        self._options.set_play_against_ai(SetupWindow._OPTION_PLAY_AGAINST[play_against])
 
     def _on_ok_clicked(self) -> None:
         self._ok_clicked = True
@@ -189,6 +208,7 @@ class GameWindow:
         self._othello_board_options = options
         self._othello_board = othello.OthelloBoard(options)
         self._current_player = options.get_first_turn()
+        self._ai_player = self._othello_board.get_opponent_piece_type(self._current_player)
         self._game_over = False
 
     def _show_setup_dialog(self) -> None:
@@ -214,30 +234,38 @@ class GameWindow:
         col_count = self._othello_board_options.get_col_count()
         row = int(event.y / self._canvas.winfo_height() * row_count)
         col = int(event.x / self._canvas.winfo_width() * col_count)
-        if self._othello_board_options.play_against_ai():
-            self._ai_thinking = True
-            self._root_window.after(1000, self._execute_ai_move, self._insert_piece(row, col))
-        else:
-            self._insert_piece(row, col)
 
-    def _execute_ai_move(self, player_move_sucess: bool) -> None:
+        self._insert_piece(row, col)
+
+        if self._othello_board_options.play_against_ai() and self._current_player == self._ai_player:
+            self._ai_thinking = True
+            self._update_labels()
+            self._root_window.after(1000, self._execute_ai_move)
+
+    def _execute_ai_move(self) -> None:
         self._ai_thinking = False
-        if not self._game_over and player_move_sucess:
-            row, col = self._othello_board.get_ai_move(self._current_player)
-            self._insert_piece(row, col)
+        row, col = self._othello_board.get_ai_move(self._current_player)
+        self._insert_piece(row, col)
 
     def _insert_piece(self, row: int, col: int) -> None:
         if self._othello_board.place_piece(self._current_player, row, col):
+            # if self._current_player == self._ai_player:
+            #     print('ai moved')
+            # else:
+            #     print('player moved')
             self._current_player = self._othello_board.get_opponent_piece_type(self._current_player)
             if self._othello_board.get_possible_valid_moves_num() == 0:
                 self._current_player = self._othello_board.skip_player_move(self._current_player)
                 if self._othello_board.get_possible_valid_moves_num() == 0:
                     self._game_over = True
+                else:
+                    if self._othello_board_options.play_against_ai() and self._current_player == self._ai_player:
+                        self._ai_thinking = True
+                        self._root_window.after(1000, self._execute_ai_move)
+                        # print('ai moved again')
 
             self._draw_canvas()
             self._update_labels()
-            return True
-        return False
 
     def _update_labels(self) -> None:
         bcount = self._othello_board.get_piece_count(othello.BLACK_PIECE)

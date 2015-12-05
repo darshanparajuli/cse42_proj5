@@ -12,29 +12,146 @@ _LOSER_COLOR = '#6D4C41'
 _SAME_SCORE_COLOR = '#757575'
 
 
+def _piece_to_str(piece_type: 'piece type') -> 'player name':
+    return 'Black' if piece_type == othello.BLACK_PIECE else 'White'
+
+
 class SetupWindow:
 
-    def __init__(self) -> None:
-        pass
+    _OPTION_WIN_CONDITIONS = {'Lowest piece count': False, 'Highest piece count': True}
+    _OPTION_BLACK_WHITE = {'Black': othello.BLACK_PIECE, 'White': othello.WHITE_PIECE}
 
-    def show() -> None:
-        pass
+    def __init__(self, as_dialog = True, options = othello.OthelloBoardOptions()) -> None:
+        self._as_dialog = as_dialog
+        self._options = options
+        self._ok_clicked = False
+
+        self._dialog_window = tk.Toplevel() if as_dialog else tk.Tk()
+        self._dialog_window.wm_title('Othello (FULL) - New game')
+
+        label_font = ('Monospace', 12)
+        om_font = ('Monospace', 10)
+
+        tk.Label(self._dialog_window, text = 'Board size:', font = label_font).grid(
+                row = 0, column = 0, sticky = tk.E)
+
+        self._row_count_var = tk.StringVar()
+        om_row_count = tk.OptionMenu(self._dialog_window, self._row_count_var, *[str(x) for x in range(4, 17, 2)])
+        om_row_count.config(font = om_font)
+        om_row_count.grid(row = 0, column = 1, sticky = tk.W)
+
+        tk.Label(self._dialog_window, text = 'X', font = label_font).grid(row = 0, column = 2, sticky = tk.W)
+
+        self._col_count_var = tk.StringVar()
+        om_col_count = tk.OptionMenu(self._dialog_window, self._col_count_var, *[str(x) for x in range(4, 17, 2)])
+        om_col_count.config(font = om_font)
+        om_col_count.grid(row = 0, column = 3, sticky = tk.W)
+
+        bw = sorted(SetupWindow._OPTION_BLACK_WHITE.keys())
+
+        tk.Label(self._dialog_window, text = 'First move:', font = label_font).grid(
+                row = 1, column = 0, sticky = tk.E)
+
+        self._first_turn_var = tk.StringVar()
+        om_first_turn = tk.OptionMenu(self._dialog_window, self._first_turn_var, *bw)
+        om_first_turn.config(font = om_font)
+        om_first_turn.grid(row = 1, column = 1, columnspan = 3, sticky = tk.W)
+
+        tk.Label(self._dialog_window, text = 'Top left:', font = label_font).grid(
+                row = 2, column = 0, sticky = tk.E)
+
+        self._top_left_var = tk.StringVar()
+        om_top_left = tk.OptionMenu(self._dialog_window, self._top_left_var, *bw)
+        om_top_left.config(font = om_font)
+        om_top_left.grid(row = 2, column = 1, columnspan = 3, sticky = tk.W)
+
+        tk.Label(self._dialog_window, text = 'Win condition:', font = label_font).grid(
+                row = 3, column = 0, sticky = tk.E)
+
+        self._win_condition_var = tk.StringVar()
+        keys = list(SetupWindow._OPTION_WIN_CONDITIONS.keys())
+        keys.sort(reverse = True)
+        om_win_condition = tk.OptionMenu(self._dialog_window, self._win_condition_var, *keys)
+        om_win_condition.config(font = om_font)
+        om_win_condition.grid(row = 3, column = 1, columnspan = 3, sticky = tk.W)
+
+        tk.Button(self._dialog_window, text = 'OK', command = self._on_ok_clicked).grid(row = 4, column = 2)
+        tk.Button(self._dialog_window, text = 'Cancel', command = self._on_cancel_clicked).grid(
+                row = 4, column = 3, padx = 10, pady = 10)
+
+        self._init_defaults()
+        self._init_callbacks()
+
+    def _init_callbacks(self) -> None:
+        self._row_count_var.trace('w', self._on_row_count_changed)
+        self._col_count_var.trace('w', self._on_col_count_changed)
+        self._first_turn_var.trace('w', self._on_first_turn_changed)
+        self._top_left_var.trace('w', self._on_top_left_changed)
+        self._win_condition_var.trace('w', self._on_win_condition_changed)
+
+    def _init_defaults(self) -> None:
+        self._row_count_var.set(str(self._options.get_row_count()))
+        self._col_count_var.set(str(self._options.get_col_count()))
+        self._first_turn_var.set(_piece_to_str(self._options.get_first_turn()))
+        self._top_left_var.set(_piece_to_str(self._options.get_top_left_piece()))
+        keys = list(SetupWindow._OPTION_WIN_CONDITIONS.keys())
+        keys.sort(reverse = True)
+        self._win_condition_var.set(keys[1 if self._options.high_count_wins() else 0])
+
+    def _on_row_count_changed(self, *args) -> None:
+        self._options.set_row_count(int(self._row_count_var.get()))
+
+    def _on_col_count_changed(self, *args) -> None:
+        self._options.set_col_count(int(self._col_count_var.get()))
+
+    def _on_first_turn_changed(self, *args) -> None:
+        first_turn = self._first_turn_var.get()
+        self._options.set_first_turn(SetupWindow._OPTION_BLACK_WHITE[first_turn])
+
+    def _on_top_left_changed(self, *args) -> None:
+        top_left = self._top_left_var.get()
+        self._options.set_top_left_piece(SetupWindow._OPTION_BLACK_WHITE[top_left])
+
+    def _on_win_condition_changed(self, *args) -> None:
+        win_condition = self._win_condition_var.get()
+        self._options.set_high_count_wins(SetupWindow._OPTION_WIN_CONDITIONS[win_condition])
+
+    def _on_ok_clicked(self) -> None:
+        self._ok_clicked = True
+        self._dialog_window.destroy()
+
+        if not self._as_dialog:
+            GameWindow(self._options).start()
+
+    def _on_cancel_clicked(self) -> None:
+        self._dialog_window.destroy()
+
+    def start(self) -> None:
+        if self._as_dialog:
+            self._dialog_window.grab_set()
+            self._dialog_window.wait_window()
+        else:
+            self._dialog_window.mainloop()
+
+    def ok(self) -> bool:
+        return self._ok_clicked
+
+    def get_othello_board_options(self) -> othello.OthelloBoardOptions:
+        return self._options
 
 
 class GameWindow:
 
-    def __init__(self) -> None:
-        self._othello_board_options = othello.OthelloBoardOptions()
-        self._othello_board_options.set_row_count(8)
-        self._othello_board_options.set_col_count(8)
-        self._othello_board = othello.OthelloBoard(self._othello_board_options)
-        self._current_player = self._othello_board_options.get_first_turn()
+    def __init__(self, options: othello.OthelloBoardOptions) -> None:
+        self._init_game_state(options)
         self._root_window = tk.Tk()
-        self._game_over = False
-        self._root_window.wm_title("Othello - FULL")
+        self._root_window.wm_title("Othello (FULL)")
         self._canvas = tk.Canvas(master = self._root_window,
                                  width = 400, height = 400,
                                  background = '#4CAF50')
+        self._canvas.grid(row = 1, column = 0, columnspan = 2,
+                          padx = 10, pady = 10,
+                          sticky = tk.E + tk.W + tk.N + tk.S)
 
         label_font = ("Monospace", 14)
         self._black_piece_label = tk.Label(master = self._root_window, font = label_font, fg = 'white',
@@ -52,13 +169,14 @@ class GameWindow:
         self._bottom_label = tk.Label(master = self._root_window, font = label_font, fg = 'white',
                                       bg = _SAME_SCORE_COLOR,
                                       padx = 10, pady = 10)
-        self._bottom_label.grid(row = 2, column = 0, columnspan = 2,
+        self._bottom_label.grid(row = 2, column = 1,
                               padx = 10, pady = (0, 10),
                               sticky = tk.E + tk.W + tk.N + tk.S)
 
-        self._canvas.grid(row = 1, column = 0, columnspan = 2,
-                          padx = 10, pady = 10,
-                          sticky = tk.E + tk.W + tk.N + tk.S)
+        self._new_game_button = tk.Button(master = self._root_window, font = label_font,
+                text = 'New game', command = self._show_setup_dialog).grid(
+                        row = 2, column = 0, sticky = tk.E + tk.W + tk.N + tk.S, padx = (10, 0), pady = (0, 10))
+
         self._root_window.rowconfigure(1, weight = 1)
         self._root_window.columnconfigure(0, weight = 1)
         self._root_window.columnconfigure(1, weight = 1)
@@ -66,8 +184,19 @@ class GameWindow:
         self._root_window.bind('<Configure>', self._on_configure_event)
         self._canvas.bind('<Button-1>', self._on_left_mouse_clicked)
 
-    def _get_turn_str(self, piece_type: 'piece type') -> 'player name':
-        return 'Black' if piece_type == othello.BLACK_PIECE else 'White'
+    def _init_game_state(self, options: othello.OthelloBoardOptions) -> None:
+        self._othello_board_options = options
+        self._othello_board = othello.OthelloBoard(options)
+        self._current_player = options.get_first_turn()
+        self._game_over = False
+
+    def _show_setup_dialog(self) -> None:
+        setup_window = SetupWindow(self._othello_board_options)
+        setup_window.start()
+        if setup_window.ok():
+            self._init_game_state(setup_window.get_othello_board_options())
+            self._draw_canvas()
+            self._update_labels()
 
     def start(self) -> None:
         self._root_window.mainloop()
@@ -136,7 +265,7 @@ class GameWindow:
                 self._black_piece_label['bg'] = _SAME_SCORE_COLOR
                 self._white_piece_label['bg'] = _SAME_SCORE_COLOR
 
-            self._bottom_label['text'] = _BOTTOM_LABEL.format('Turn', self._get_turn_str(self._current_player))
+            self._bottom_label['text'] = _BOTTOM_LABEL.format('Turn', _piece_to_str(self._current_player))
             self._bottom_label['bg'] = _SAME_SCORE_COLOR
 
     def _draw_canvas(self) -> None:

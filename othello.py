@@ -46,8 +46,8 @@ class _Cell:
 class OthelloBoardOptions:
 
     def __init__(self) -> None:
-        self._row_count = 16
-        self._col_count = 16
+        self._row_count = 8
+        self._col_count = 8
         self._first_turn = BLACK_PIECE
         self._top_left_piece = WHITE_PIECE
         self._high_count_wins = True

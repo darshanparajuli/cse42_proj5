@@ -144,6 +144,7 @@ class GameWindow:
 
     def __init__(self, options: othello.OthelloBoardOptions) -> None:
         self._init_game_state(options)
+        self._ai_thinking = False
         self._root_window = tk.Tk()
         self._root_window.wm_title("Othello (FULL)")
         self._canvas = tk.Canvas(master = self._root_window,
@@ -206,14 +207,26 @@ class GameWindow:
         self._update_labels()
 
     def _on_left_mouse_clicked(self, event: tk.Event) -> None:
-        if self._game_over:
+        if self._game_over or self._ai_thinking:
             return
 
         row_count = self._othello_board_options.get_row_count()
         col_count = self._othello_board_options.get_col_count()
         row = int(event.y / self._canvas.winfo_height() * row_count)
         col = int(event.x / self._canvas.winfo_width() * col_count)
+        if self._othello_board_options.play_against_ai():
+            self._ai_thinking = True
+            self._root_window.after(1000, self._execute_ai_move, self._insert_piece(row, col))
+        else:
+            self._insert_piece(row, col)
 
+    def _execute_ai_move(self, player_move_sucess: bool) -> None:
+        self._ai_thinking = False
+        if not self._game_over and player_move_sucess:
+            row, col = self._othello_board.get_ai_move(self._current_player)
+            self._insert_piece(row, col)
+
+    def _insert_piece(self, row: int, col: int) -> None:
         if self._othello_board.place_piece(self._current_player, row, col):
             self._current_player = self._othello_board.get_opponent_piece_type(self._current_player)
             if self._othello_board.get_possible_valid_moves_num() == 0:
@@ -223,6 +236,8 @@ class GameWindow:
 
             self._draw_canvas()
             self._update_labels()
+            return True
+        return False
 
     def _update_labels(self) -> None:
         bcount = self._othello_board.get_piece_count(othello.BLACK_PIECE)
@@ -265,7 +280,10 @@ class GameWindow:
                 self._black_piece_label['bg'] = _SAME_SCORE_COLOR
                 self._white_piece_label['bg'] = _SAME_SCORE_COLOR
 
-            self._bottom_label['text'] = _BOTTOM_LABEL.format('Turn', _piece_to_str(self._current_player))
+            if self._othello_board_options.play_against_ai() and self._ai_thinking:
+                self._bottom_label['text'] = 'Thinking...'
+            else:
+                self._bottom_label['text'] = _BOTTOM_LABEL.format('Turn', _piece_to_str(self._current_player))
             self._bottom_label['bg'] = _SAME_SCORE_COLOR
 
     def _draw_canvas(self) -> None:

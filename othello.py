@@ -51,6 +51,7 @@ class OthelloBoardOptions:
         self._first_turn = BLACK_PIECE
         self._top_left_piece = WHITE_PIECE
         self._high_count_wins = True
+        self._play_against_ai = True
 
     def get_row_count(self) -> int:
         return self._row_count
@@ -67,6 +68,9 @@ class OthelloBoardOptions:
     def high_count_wins(self) -> bool:
         return self._high_count_wins
 
+    def play_against_ai(self) -> bool:
+        return self._play_against_ai
+
     def set_row_count(self, row_count: int) -> None:
         self._row_count = row_count
 
@@ -81,6 +85,9 @@ class OthelloBoardOptions:
 
     def set_first_turn(self, first_turn: 'piece type') -> None:
         self._first_turn = first_turn
+
+    def set_play_against_ai(self, play_against_ai: bool) -> None:
+        self._play_against_ai = play_against_ai
 
 
 class OthelloBoard:
